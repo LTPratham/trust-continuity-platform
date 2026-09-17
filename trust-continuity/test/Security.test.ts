@@ -7,15 +7,16 @@ describe("Security & Attack Demonstration Suite", function () {
   let identityRegistry: IdentityRegistry;
   let assetNFT: AssetNFT;
   let admin: HardhatEthersSigner;
-  let engineerA: HardhatEthersSigner; // Manager
-  let engineerB: HardhatEthersSigner; // User
-  let auditor: HardhatEthersSigner;   // Auditor
-  let attacker: HardhatEthersSigner;  // Unauthorized
+  let engineerA: HardhatEthersSigner;
+  let engineerB: HardhatEthersSigner;
+  let auditor: HardhatEthersSigner;
+  let attacker: HardhatEthersSigner;
 
-  const MANAGER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("MANAGER_ROLE"));
-  const AUDITOR_ROLE = ethers.keccak256(ethers.toUtf8Bytes("AUDITOR_ROLE"));
-  const USER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("USER_ROLE"));
+  const MANAGER_ROLE       = ethers.keccak256(ethers.toUtf8Bytes("MANAGER_ROLE"));
+  const AUDITOR_ROLE       = ethers.keccak256(ethers.toUtf8Bytes("AUDITOR_ROLE"));
+  const USER_ROLE          = ethers.keccak256(ethers.toUtf8Bytes("USER_ROLE"));
   const DEFAULT_ADMIN_ROLE = ethers.ZeroHash;
+  const ZERO_CRED          = ethers.ZeroHash;
 
   const sampleHash = ethers.keccak256(ethers.toUtf8Bytes("BEL Secure Asset Document"));
 
@@ -30,11 +31,11 @@ describe("Security & Attack Demonstration Suite", function () {
     assetNFT = await AssetFactory.deploy(await identityRegistry.getAddress());
     await assetNFT.waitForDeployment();
 
-    // Register all legitimate identities
-    await identityRegistry.connect(admin).registerIdentity(admin.address);
-    await identityRegistry.connect(admin).registerIdentity(engineerA.address);
-    await identityRegistry.connect(admin).registerIdentity(engineerB.address);
-    await identityRegistry.connect(admin).registerIdentity(auditor.address);
+    // Register legitimate identities
+    await identityRegistry.connect(admin).registerIdentity(admin.address, "Admin", ZERO_CRED);
+    await identityRegistry.connect(admin).registerIdentity(engineerA.address, "Manager A", ZERO_CRED);
+    await identityRegistry.connect(admin).registerIdentity(engineerB.address, "Engineer B", ZERO_CRED);
+    await identityRegistry.connect(admin).registerIdentity(auditor.address, "Auditor", ZERO_CRED);
 
     // Assign roles
     await assetNFT.connect(admin).grantRole(MANAGER_ROLE, engineerA.address);
@@ -48,33 +49,18 @@ describe("Security & Attack Demonstration Suite", function () {
       expect(await assetNFT.hasRole(MANAGER_ROLE, engineerB.address)).to.be.false;
 
       await expect(
-        assetNFT
-          .connect(engineerB)
-          .mintAsset(
-            engineerB.address,
-            2001,
-            "BEL-UNAUTH-01",
-            "Illegal Asset",
-            "Unauthorized mint",
-            sampleHash
-          )
+        assetNFT.connect(engineerB).mintAsset(
+          engineerB.address, 2001, "BEL-UNAUTH-01",
+          "Illegal Asset", "Unauthorized mint", sampleHash
+        )
       ).to.be.revertedWithCustomError(assetNFT, "NotManager");
     });
 
-    it("Engineer B (active User) attempts custodyTransfer -> BLOCKED with NotManager", async function () {
-      // First, legit manager mints an asset to Engineer B
-      await assetNFT
-        .connect(engineerA)
-        .mintAsset(
-          engineerB.address,
-          1047,
-          "BEL-TEST-1047",
-          "Radar Unit",
-          "Hardware",
-          sampleHash
-        );
-
-      // Even though Engineer B holds the asset, they CANNOT transfer it!
+    it("Engineer B attempts custodyTransfer -> BLOCKED with NotManager", async function () {
+      await assetNFT.connect(engineerA).mintAsset(
+        engineerB.address, 1047, "BEL-TEST-1047",
+        "Secure Defense Asset A-001", "Hardware", sampleHash
+      );
       expect(await assetNFT.ownerOf(1047)).to.equal(engineerB.address);
 
       await expect(
@@ -85,56 +71,36 @@ describe("Security & Attack Demonstration Suite", function () {
 
   describe("Attack Scenario 2: Revoked Manager (Identity Revoked)", function () {
     beforeEach(async function () {
-      // Step 1-5: Engineer A is active manager, mints an asset successfully
-      await assetNFT
-        .connect(engineerA)
-        .mintAsset(
-          engineerA.address,
-          1047,
-          "BEL-TEST-1047",
-          "Radar Unit",
-          "Hardware",
-          sampleHash
-        );
+      await assetNFT.connect(engineerA).mintAsset(
+        engineerA.address, 1047, "BEL-TEST-1047",
+        "Secure Defense Asset A-001", "Hardware", sampleHash
+      );
       expect(await assetNFT.ownerOf(1047)).to.equal(engineerA.address);
     });
 
-    it("Revoked Engineer A retains MANAGER_ROLE in AccessControl but is BLOCKED by smart contract", async function () {
-      // Step 6: Admin revokes Engineer A
+    it("Revoked Engineer A retains MANAGER_ROLE but is BLOCKED by smart contract", async function () {
       await identityRegistry.connect(admin).revokeIdentity(engineerA.address);
       expect(await identityRegistry.isActive(engineerA.address)).to.be.false;
-
-      // Note the MVP design decision: Engineer A still technically has MANAGER_ROLE
+      // Role record preserved as audit evidence — but execution is blocked
       expect(await assetNFT.hasRole(MANAGER_ROLE, engineerA.address)).to.be.true;
 
-      // Step 7-8: Engineer A attempts minting another asset -> Smart contract REJECTS with IdentityNotActive
       await expect(
-        assetNFT
-          .connect(engineerA)
-          .mintAsset(
-            engineerA.address,
-            1048,
-            "BEL-TEST-1048",
-            "Second Unit",
-            "Unauthorized mint attempt",
-            sampleHash
-          )
+        assetNFT.connect(engineerA).mintAsset(
+          engineerA.address, 1048, "BEL-TEST-1048",
+          "Second Unit", "Unauthorized mint attempt", sampleHash
+        )
       ).to.be.revertedWithCustomError(assetNFT, "IdentityNotActive");
 
-      // Engineer A attempts custody transfer -> Smart contract REJECTS with IdentityNotActive
       await expect(
         assetNFT.connect(engineerA).custodyTransfer(engineerB.address, 1047)
       ).to.be.revertedWithCustomError(assetNFT, "IdentityNotActive");
     });
 
-    it("Reactivating Engineer A restores their ability to perform manager actions", async function () {
-      // Revoke
+    it("Reactivating Engineer A restores ability to perform manager actions", async function () {
       await identityRegistry.connect(admin).revokeIdentity(engineerA.address);
-      // Reactivate
       await identityRegistry.connect(admin).reactivateIdentity(engineerA.address);
       expect(await identityRegistry.isActive(engineerA.address)).to.be.true;
 
-      // Now custody transfer should succeed
       await expect(
         assetNFT.connect(engineerA).custodyTransfer(engineerB.address, 1047)
       ).to.emit(assetNFT, "AssetCustodyTransferred");
@@ -149,31 +115,18 @@ describe("Security & Attack Demonstration Suite", function () {
       expect(await assetNFT.hasRole(AUDITOR_ROLE, auditor.address)).to.be.true;
 
       await expect(
-        assetNFT
-          .connect(auditor)
-          .mintAsset(
-            auditor.address,
-            3001,
-            "AUDIT-01",
-            "Audit Item",
-            "Attempted mint",
-            sampleHash
-          )
+        assetNFT.connect(auditor).mintAsset(
+          auditor.address, 3001, "AUDIT-01",
+          "Audit Item", "Attempted mint", sampleHash
+        )
       ).to.be.revertedWithCustomError(assetNFT, "NotManager");
     });
 
     it("Auditor cannot transfer custody", async function () {
-      await assetNFT
-        .connect(engineerA)
-        .mintAsset(
-          engineerA.address,
-          1047,
-          "BEL-TEST-1047",
-          "Radar Unit",
-          "Hardware",
-          sampleHash
-        );
-
+      await assetNFT.connect(engineerA).mintAsset(
+        engineerA.address, 1047, "BEL-TEST-1047",
+        "Secure Defense Asset A-001", "Hardware", sampleHash
+      );
       await expect(
         assetNFT.connect(auditor).custodyTransfer(auditor.address, 1047)
       ).to.be.revertedWithCustomError(assetNFT, "NotManager");
@@ -195,8 +148,34 @@ describe("Security & Attack Demonstration Suite", function () {
 
     it("Attacker cannot register themselves in IdentityRegistry", async function () {
       await expect(
-        identityRegistry.connect(attacker).registerIdentity(attacker.address)
+        identityRegistry.connect(attacker).registerIdentity(attacker.address, "Hacker", ZERO_CRED)
       ).to.be.revertedWithCustomError(identityRegistry, "NotAdmin");
+    });
+  });
+
+  describe("Attack Scenario 5: Suspended Asset Operations", function () {
+    beforeEach(async function () {
+      await assetNFT.connect(engineerA).mintAsset(
+        engineerA.address, 1047, "BEL-TEST-1047",
+        "Secure Defense Asset A-001", "Hardware", sampleHash
+      );
+    });
+
+    it("Manager cannot transfer custody of a suspended asset -> BLOCKED", async function () {
+      await assetNFT.connect(admin).suspendAsset(1047);
+      expect(await assetNFT.getAssetState(1047)).to.equal(6); // SUSPENDED
+
+      await expect(
+        assetNFT.connect(engineerA).custodyTransfer(engineerB.address, 1047)
+      ).to.be.revertedWithCustomError(assetNFT, "AssetSuspendedOrRevoked");
+    });
+
+    it("Admin unsuspends asset and manager can operate again", async function () {
+      await assetNFT.connect(admin).suspendAsset(1047);
+      await assetNFT.connect(admin).unsuspendAsset(1047);
+      await expect(
+        assetNFT.connect(engineerA).custodyTransfer(engineerB.address, 1047)
+      ).to.emit(assetNFT, "AssetCustodyTransferred");
     });
   });
 });

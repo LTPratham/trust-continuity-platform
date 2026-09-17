@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import Link from "next/link";
@@ -30,8 +30,12 @@ export function Header() {
     { name: "Dashboard", href: "/dashboard" },
     { name: "Identities", href: "/identities" },
     { name: "Assets", href: "/assets" },
+    { name: "Trust Engine", href: "/trust-engine", highlight: true },
+    { name: "Attestation", href: "/attestation" },
+    { name: "Transfer", href: "/transfer" },
+    { name: "RBAC Matrix", href: "/rbac" },
     { name: "Audit Log", href: "/audit" },
-    { name: "Security Demo", href: "/security", highlight: true },
+    { name: "Security Demo", href: "/security" },
   ];
 
   const triggerTour = () => {

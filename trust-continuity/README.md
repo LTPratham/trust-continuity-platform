@@ -183,3 +183,6 @@ Open `http://localhost:3000`. Use the dev account switcher in the header to swit
 - Prathamesh Sawarkar ([@LTPratham](https://github.com/LTPratham))
 - Sarthak Dhatrak ([@SarthakDhatrak](https://github.com/SarthakDhatrak))
 - Sunil Yadav ([@SUNNYYDV1507](https://github.com/SUNNYYDV1507))
+- Shubham ([@shub203](https://github.com/shub203))
+- Kirat ([@kirat2005](https://github.com/kirat2005))
+- Manjeet ([@mmrehu](https://github.com/mmrehu))

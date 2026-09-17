@@ -1,4 +1,4 @@
-﻿# Team Contributors — Trust Continuity Platform
+# Team Contributors — Trust Continuity Platform
 ### Smart India Hackathon 2026 — Problem Statement SIH26125
 ### Organization / Defense Partner: Bharat Electronics Limited (BEL)
 
@@ -11,6 +11,9 @@
 | **Prathamesh Sawarkar** | [@LTPratham](https://github.com/LTPratham) | Project Lead & Full-Stack Architect | Smart Contract Engineering, Architecture Design, Next.js Frontend |
 | **Sunny Yadav** | [@SUNNYYDV1507](https://github.com/SUNNYYDV1507) | Core Contributor | Testing, Security Scenarios & Quality Assurance |
 | **Sarthak Dhatrak** | [@SarthakDhatrak](https://github.com/SarthakDhatrak) | Core Contributor | Defense Workflows, Technical Documentation & Deployment |
+| **Shubham** | [@shub203](https://github.com/shub203) | Core Contributor | Development & Integration |
+| **Kirat** | [@kirat2005](https://github.com/kirat2005) | Core Contributor | Development & Integration |
+| **Manjeet** | [@mmrehu](https://github.com/mmrehu) | Core Contributor | Development & Integration |
 
 ---
 
